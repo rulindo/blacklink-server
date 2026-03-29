@@ -1,5 +1,4 @@
 # railway.toml — BLACKLINK v3 Signaling Server
-# Railway reads this automatically when you deploy.
 
 [build]
 builder = "NIXPACKS"
@@ -7,9 +6,14 @@ builder = "NIXPACKS"
 [deploy]
 startCommand = "node server.js"
 healthcheckPath = "/health"
-healthcheckTimeout = 10
+healthcheckTimeout = 30
+healthcheckInterval = 10
 restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 3
+restartPolicyMaxRetries = 5
 
 [[services]]
 name = "blacklink-signaling"
+
+[services.ports]
+port = "3000"
+protocol = "HTTP"
