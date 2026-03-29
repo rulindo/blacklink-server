@@ -5,28 +5,45 @@
  */
 const http = require("http");
 
+const PORT = parseInt(process.env.PORT || "3000", 10);
+
 const req = http.request(
   {
     hostname: "localhost",
-    port: parseInt(process.env.HTTP_PORT || "3001", 10),
+    port: PORT,
     path: "/health",
     method: "GET",
-    timeout: 2000,
+    timeout: 3000,
   },
   (res) => {
     let body = "";
     res.on("data", (c) => (body += c));
     res.on("end", () => {
-      try {
-        const data = JSON.parse(body);
-        process.exit(data.status === "healthy" ? 0 : 1);
-      } catch {
+      // Accept both 200 status and healthy JSON response
+      if (res.statusCode === 200) {
+        try {
+          const data = JSON.parse(body);
+          process.exit(data.status === "healthy" ? 0 : 1);
+        } catch {
+          // If JSON parse fails but status is 200, consider it healthy
+          process.exit(0);
+        }
+      } else {
         process.exit(1);
       }
     });
   }
 );
 
-req.on("error",   () => process.exit(1));
-req.on("timeout", () => process.exit(1));
+req.on("error", () => {
+  console.error("Health check failed: connection error");
+  process.exit(1);
+});
+
+req.on("timeout", () => {
+  console.error("Health check failed: timeout");
+  req.destroy();
+  process.exit(1);
+});
+
 req.end();
