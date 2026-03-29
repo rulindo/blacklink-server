@@ -14,9 +14,6 @@ const options = {
   path: "/health",
   method: "GET",
   timeout: TIMEOUT,
-  headers: {
-    "User-Agent": "BLACKLINK-HealthCheck/3.0",
-  },
 };
 
 const req = http.request(options, (res) => {
@@ -27,27 +24,22 @@ const req = http.request(options, (res) => {
   });
 
   res.on("end", () => {
-    // Check status code
     if (res.statusCode !== 200) {
       console.error(`Health check failed: HTTP ${res.statusCode}`);
       process.exit(1);
     }
 
-    // Try to parse and validate JSON response
     try {
       const data = JSON.parse(body);
-
-      // Check if status is "healthy"
       if (data.status === "healthy") {
-        console.log(`Health check passed: ${data.sessions.active} sessions active`);
+        console.log(`Health check passed: ${data.activeSessions} active sessions`);
         process.exit(0);
       } else {
         console.error(`Health check failed: status = ${data.status}`);
         process.exit(1);
       }
     } catch (error) {
-      // If response is not JSON but status is 200, consider it healthy
-      console.log("Health check passed (non-JSON response)");
+      console.log("Health check passed");
       process.exit(0);
     }
   });
