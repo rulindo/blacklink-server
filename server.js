@@ -56,7 +56,7 @@ function cleanupSession(id) {
 
 // TURN server configuration
 const TURN_CONFIG = {
-  server: 'just-manifestation-production-ce21.up.railway.app',
+  server: 'filedropper.up.railway.app',
   secret: '8xR9mK2pQ7vN4wL6yH3jF1sD5gB0tZ9cX7vM2nP4qR6wS8yU0',
   ttl: 3600 // 1 hour
 };
@@ -74,9 +74,7 @@ function generateTurnCredentials(username) {
     username: usernameWithExpiry,
     credential: password,
     urls: [
-      `turn:${TURN_CONFIG.server}:3478`,
-      `turn:${TURN_CONFIG.server}:3478?transport=tcp`,
-      `turns:${TURN_CONFIG.server}:5349`
+      `turn:${TURN_CONFIG.server}:3478?transport=tcp`
     ],
     ttl: TURN_CONFIG.ttl
   };
