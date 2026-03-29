@@ -13,7 +13,3 @@ restartPolicyMaxRetries = 5
 
 [[services]]
 name = "blacklink-signaling"
-
-[services.ports]
-port = "3000"
-protocol = "HTTP"
