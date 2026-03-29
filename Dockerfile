@@ -1,29 +1,18 @@
-# ── BLACKLINK v3 — Production Signaling Server ──
-FROM node:20-alpine AS builder
+# ── BLACKLINK v3 — Signaling Server ──
+FROM node:20-alpine
 
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies only
-RUN npm ci --only=production && npm cache clean --force
-
-# ──────────────────────────────────────────────
-FROM node:20-alpine
-
-WORKDIR /app
-
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
-
-# Copy dependencies from builder
-COPY --from=builder /app/node_modules ./node_modules
+# Install production dependencies
+RUN npm install --omit=dev && npm cache clean --force
 
 # Copy application files
 COPY server.js health.js ./
 
-# Create non-root user
+# Create non-root user for security
 RUN addgroup -S blacklink && \
     adduser -S blacklink -G blacklink && \
     chown -R blacklink:blacklink /app
@@ -45,6 +34,5 @@ HEALTHCHECK --interval=30s \
             --retries=3 \
             CMD node health.js
 
-# Start with dumb-init for proper signal handling
-ENTRYPOINT ["dumb-init", "--"]
+# Start the application
 CMD ["node", "server.js"]
