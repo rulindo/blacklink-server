@@ -54,6 +54,34 @@ function cleanupSession(id) {
   console.log(`[Cleanup] Session removed: ${id}`);
 }
 
+// TURN server configuration
+const TURN_CONFIG = {
+  server: 'just-manifestation-production-ce21.up.railway.app',
+  secret: '8xR9mK2pQ7vN4wL6yH3jF1sD5gB0tZ9cX7vM2nP4qR6wS8yU0',
+  ttl: 3600 // 1 hour
+};
+
+// Generate TURN credentials for a client
+function generateTurnCredentials(username) {
+  const timestamp = Math.floor(Date.now() / 1000) + TURN_CONFIG.ttl;
+  const usernameWithExpiry = `${timestamp}:${username}`;
+  
+  const hmac = crypto.createHmac('sha1', TURN_CONFIG.secret);
+  hmac.update(usernameWithExpiry);
+  const password = hmac.digest('base64');
+  
+  return {
+    username: usernameWithExpiry,
+    credential: password,
+    urls: [
+      `turn:${TURN_CONFIG.server}:3478`,
+      `turn:${TURN_CONFIG.server}:3478?transport=tcp`,
+      `turns:${TURN_CONFIG.server}:5349`
+    ],
+    ttl: TURN_CONFIG.ttl
+  };
+}
+
 const app = express();
 app.use(cors({ origin: ORIGIN, credentials: true }));
 app.use(express.json());
@@ -77,6 +105,18 @@ app.get("/health", (_req, res) => {
     port: PORT,
     version: "3.0.0",
     timestamp: new Date().toISOString(),
+  });
+});
+
+app.get("/api/turn-credentials", (req, res) => {
+  const userId = req.query.userId || crypto.randomBytes(8).toString('hex');
+  const credentials = generateTurnCredentials(userId);
+  
+  res.json({
+    success: true,
+    ...credentials,
+    server: TURN_CONFIG.server,
+    timestamp: Date.now()
   });
 });
 
@@ -318,9 +358,11 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log(`HTTP Server: http://0.0.0.0:${PORT}`);
   console.log(`WebSocket: ws://0.0.0.0:${PORT}/ws`);
   console.log(`Health Check: http://0.0.0.0:${PORT}/health`);
+  console.log(`TURN Credentials: http://0.0.0.0:${PORT}/api/turn-credentials`);
   console.log("----------------------------------------");
   console.log(`Session TTL: ${SESSION_TTL}ms`);
   console.log(`Rate Limit: ${RATE_LIMIT} requests/minute`);
+  console.log(`TURN Server: ${TURN_CONFIG.server}`);
   console.log("========================================");
   console.log("✅ Server is ready");
 });
