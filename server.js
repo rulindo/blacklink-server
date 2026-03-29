@@ -4,9 +4,9 @@ const cors      = require("cors");
 const crypto    = require("crypto");
 const http      = require("http");
 
-const PORT        = parseInt(process.env.PORT        || "3000", 10);
+const PORT        = parseInt(process.env.PORT || "3000", 10);
 const SESSION_TTL = parseInt(process.env.SESSION_TTL || "120000", 10);
-const RATE_LIMIT  = parseInt(process.env.RATE_LIMIT  || "20",     10);
+const RATE_LIMIT  = parseInt(process.env.RATE_LIMIT || "20", 10);
 const ORIGIN      = process.env.ALLOWED_ORIGIN || "*";
 
 const sessions    = new Map();
@@ -44,23 +44,21 @@ function cleanupSession(id) {
   
   safeSend(s.receiver, { type: "canceled" });
   sessions.delete(id);
-  console.log(`Session cleaned up: ${id}`);
+  console.log(`[Cleanup] Session removed: ${id}`);
 }
 
 const app = express();
 
-// CORS configuration
-app.use(cors({ 
-  origin: ORIGIN,
-  credentials: true 
-}));
+// Middleware
+app.use(cors({ origin: ORIGIN, credentials: true }));
+app.use(express.json());
 
-// Simple root endpoint
+// Root endpoint
 app.get("/", (_req, res) => {
   res.status(200).send("BLACKLINK v3 — OK");
 });
 
-// Health check endpoint - simplified for Railway
+// Health check endpoint
 app.get("/health", (_req, res) => {
   res.status(200).json({
     status: "healthy",
@@ -68,6 +66,7 @@ app.get("/health", (_req, res) => {
     connectedPeers: wss ? wss.clients.size : 0,
     uptime: Math.floor(process.uptime()),
     memoryMB: Math.round(process.memoryUsage().rss / 1024 / 1024),
+    port: PORT,
     version: "3.0.0",
     timestamp: new Date().toISOString()
   });
@@ -79,7 +78,7 @@ const server = http.createServer(app);
 // Create WebSocket server
 const wss = new WebSocket.Server({ 
   server,
-  path: "/ws" // Explicit WebSocket path
+  path: "/ws"
 });
 
 // WebSocket connection handler
@@ -103,8 +102,6 @@ wss.on("connection", (ws, req) => {
       safeSend(ws, { type: "error", message: "Invalid JSON" });
       return;
     }
-    
-    console.log(`[WS] Message from ${ip}: ${data.type}`);
     
     switch (data.type) {
       case "create": {
@@ -178,7 +175,7 @@ wss.on("connection", (ws, req) => {
         });
         sessions.delete(data.sessionID);
         
-        console.log(`[Session] Answered: ${data.sessionID}`);
+        console.log(`[Session] Completed: ${data.sessionID}`);
         break;
       }
       
@@ -187,10 +184,12 @@ wss.on("connection", (ws, req) => {
         if (!s) return;
         
         const target = ws === s.sender ? s.receiver : s.sender;
-        safeSend(target, { 
-          type: "ice", 
-          candidate: data.candidate 
-        });
+        if (target) {
+          safeSend(target, { 
+            type: "ice", 
+            candidate: data.candidate 
+          });
+        }
         break;
       }
       
@@ -229,16 +228,17 @@ wss.on("connection", (ws, req) => {
   });
 });
 
-// Ping interval to keep connections alive
+// Heartbeat interval
 const pingInterval = setInterval(() => {
   wss.clients.forEach((ws) => {
     if (!ws.isAlive) {
-      return ws.terminate();
+      ws.terminate();
+      return;
     }
     ws.isAlive = false;
     ws.ping();
   });
-}, 30_000);
+}, 30000);
 
 // Session cleanup interval
 const cleanupInterval = setInterval(() => {
@@ -255,23 +255,22 @@ const cleanupInterval = setInterval(() => {
   if (cleaned > 0) {
     console.log(`[Cleanup] Removed ${cleaned} expired sessions`);
   }
-}, 15_000);
+}, 15000);
 
-// Server startup with error handling
+// Server startup
 server.on('error', (error) => {
   console.error('[FATAL] Server failed to start:', error);
   process.exit(1);
 });
 
-// Bind to all network interfaces (important for Railway)
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`=================================`);
-  console.log(`[BLACKLINK v3] Server started successfully`);
+  console.log('=================================');
+  console.log('[BLACKLINK v3] Server started successfully');
   console.log(`[HTTP] Listening on port ${PORT}`);
   console.log(`[WebSocket] Endpoint: ws://0.0.0.0:${PORT}/ws`);
   console.log(`[Health] http://0.0.0.0:${PORT}/health`);
-  console.log(`[Active] Ready to accept connections`);
-  console.log(`=================================`);
+  console.log('[Status] Ready to accept connections');
+  console.log('=================================');
 });
 
 // Graceful shutdown
@@ -280,12 +279,10 @@ process.on('SIGTERM', () => {
   clearInterval(pingInterval);
   clearInterval(cleanupInterval);
   
-  // Close all WebSocket connections
   wss.clients.forEach((ws) => {
     ws.close();
   });
   
-  // Close server
   server.close(() => {
     console.log('[Shutdown] Server closed');
     process.exit(0);
@@ -294,10 +291,9 @@ process.on('SIGTERM', () => {
 
 process.on('uncaughtException', (error) => {
   console.error('[FATAL] Uncaught exception:', error);
-  // Don't exit immediately, give time to log
   setTimeout(() => process.exit(1), 1000);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('[FATAL] Unhandled rejection at:', promise, 'reason:', reason);
+  console.error('[FATAL] Unhandled rejection:', reason);
 });
