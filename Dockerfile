@@ -1,28 +1,50 @@
-# ── BLACKLINK v3 — Signaling Server ──────────────────────────────────────
-FROM node:20-alpine AS base
+# ── BLACKLINK v3 — Production Signaling Server ──
+FROM node:20-alpine AS builder
+
 WORKDIR /app
 
-# Install production deps only
+# Copy package files
 COPY package*.json ./
-RUN npm install --omit=dev
 
+# Install production dependencies only
+RUN npm ci --only=production && npm cache clean --force
+
+# ──────────────────────────────────────────────
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
+
+# Copy dependencies from builder
+COPY --from=builder /app/node_modules ./node_modules
+
+# Copy application files
 COPY server.js health.js ./
 
-# Non-root user for security
-RUN addgroup -S blacklink && adduser -S blacklink -G blacklink
+# Create non-root user
+RUN addgroup -S blacklink && \
+    adduser -S blacklink -G blacklink && \
+    chown -R blacklink:blacklink /app
+
+# Switch to non-root user
 USER blacklink
 
-EXPOSE 3000 3001
+# Expose port
+EXPOSE 3000
 
+# Environment variables
 ENV NODE_ENV=production \
-    PORT=3000 \
-    HTTP_PORT=3001
+    PORT=3000
 
-HEALTHCHECK \
-  --interval=30s \
-  --timeout=5s \
-  --start-period=10s \
-  --retries=3 \
-  CMD node health.js
+# Health check
+HEALTHCHECK --interval=30s \
+            --timeout=5s \
+            --start-period=10s \
+            --retries=3 \
+            CMD node health.js
 
+# Start with dumb-init for proper signal handling
+ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "server.js"]
