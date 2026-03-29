@@ -5,29 +5,14 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js",
-    "health": "node health.js",
-    "lint": "eslint .",
-    "format": "prettier --write ."
+    "dev": "node --watch server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
     "ws": "^8.16.0",
-    "cors": "^2.8.5",
-    "helmet": "^7.1.0",
-    "compression": "^1.7.4",
-    "express-rate-limit": "^7.1.5"
-  },
-  "devDependencies": {
-    "eslint": "^8.56.0",
-    "prettier": "^3.1.1",
-    "nodemon": "^3.0.2"
+    "cors": "^2.8.5"
   },
   "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=9.0.0"
-  },
-  "keywords": ["webrtc", "signaling", "p2p", "websocket"],
-  "author": "BLACKLINK",
-  "license": "MIT"
+    "node": ">=18.0.0"
+  }
 }
