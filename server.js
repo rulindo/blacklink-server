@@ -56,9 +56,9 @@ function cleanupSession(id) {
 
 // TURN server configuration
 const TURN_CONFIG = {
-  server: 'filedropper.up.railway.app',
+  server: 'filedroprwanda.fly.dev',  // Your Fly.io domain
   secret: '8xR9mK2pQ7vN4wL6yH3jF1sD5gB0tZ9cX7vM2nP4qR6wS8yU0',
-  ttl: 3600 // 1 hour
+  ttl: 3600
 };
 
 // Generate TURN credentials for a client
